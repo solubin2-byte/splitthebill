@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Split the Bill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand: #F5EED8; --sand-dark: #E8D9B0;
+    --ocean: #2E7D9F; --ocean-light: #5FA8C5; --ocean-dark: #1A5470;
+    --coral: #E8735A; --coral-light: #F0A08C; --coral-dark: #C45840;
+    --leaf: #4A7C59; --leaf-light: #7AAD8A;
+    --sky: #B8D9E8; --warm-white: #FDFAF3;
+    --text-dark: #2C2416; --text-mid: #6B5B3A; --text-light: #A08C64;
+    --border: rgba(160,130,80,0.25); --shadow: rgba(44,36,22,0.12);
+    --radius: 16px; --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--sand); color: var(--text-dark); min-height: 100vh; overflow-x: hidden; }
+
+  /* ── PAGES ── */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: block; }
+  #page-main { flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; position: relative; overflow: hidden; background: linear-gradient(160deg, #B8D9E8 0%, #F5EED8 45%, #F5EED8 100%); }
+  #page-main.active { display: flex; }
+
+  /* ── FIREBASE CONFIG PAGE ── */
+  #page-config { background: var(--warm-white); }
+  #page-config.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
+  .config-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; max-width: 480px; width: 100%; box-shadow: 0 4px 24px var(--shadow); }
+  .config-title { font-family: 'Noto Serif KR', serif; font-size: 20px; font-weight: 500; margin-bottom: 6px; }
+  .config-sub { font-size: 12.5px; color: var(--text-light); margin-bottom: 1.5rem; line-height: 1.7; }
+  .config-field { margin-bottom: 12px; }
+  .config-label { font-size: 11.5px; font-weight: 600; color: var(--text-mid); margin-bottom: 5px; display: block; letter-spacing: 0.04em; }
+  .config-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; color: var(--text-dark); background: var(--warm-white); outline: none; transition: border-color 0.15s; }
+  .config-input:focus { border-color: var(--ocean); }
+  .config-hint { font-size: 11px; color: var(--text-light); margin-top: 4px; line-height: 1.5; }
+  .config-steps { background: var(--sand); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.2rem; }
+  .config-steps ol { padding-left: 1.2rem; font-size: 12px; color: var(--text-mid); line-height: 2; }
+  .config-steps a { color: var(--ocean); }
+
+  /* ── WAVE DECO ── */
+  .main-bg-deco { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 180px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 180'%3E%3Cpath fill='%232E7D9F' fill-opacity='0.08' d='M0,96L48,106.7C96,117,192,139,288,133.3C384,128,480,96,576,85.3C672,75,768,85,864,96C960,107,1056,117,1152,112C1248,107,1344,85,1392,74.7L1440,64L1440,180L0,180Z'/%3E%3C/svg%3E") no-repeat bottom; background-size: cover; }
+  .wave2 { position: absolute; bottom: 0; left: 0; width: 100%; height: 100px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 100'%3E%3Cpath fill='%232E7D9F' fill-opacity='0.06' d='M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,74.7C840,75,960,53,1080,48C1200,43,1320,53,1380,58.7L1440,64L1440,100L0,100Z'/%3E%3C/svg%3E") no-repeat bottom; background-size: cover; }
+  .deco-circle { position: absolute; border-radius: 50%; background: rgba(46,125,159,0.06); }
+
+  /* ── MAIN CARD ── */
+  .main-card { background: rgba(253,250,243,0.88); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.7); border-radius: 28px; padding: 3.5rem 4rem; text-align: center; max-width: 520px; width: 100%; box-shadow: 0 8px 48px rgba(44,36,22,0.12); position: relative; z-index: 1; }
+  .main-tag { display: inline-block; background: var(--ocean-light); color: white; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 14px; border-radius: 100px; margin-bottom: 1.5rem; }
+  .main-title-wrap { position: relative; margin-bottom: 1rem; }
+  .main-title { font-family: 'Noto Serif KR', serif; font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 500; color: var(--text-dark); line-height: 1.3; cursor: pointer; display: inline-block; transition: color 0.2s; }
+  .main-title:hover { color: var(--ocean); }
+  .title-edit-input { font-family: 'Noto Serif KR', serif; font-size: clamp(2rem, 5vw, 2.8rem); font-weight: 500; color: var(--text-dark); background: transparent; border: none; border-bottom: 2px solid var(--ocean); outline: none; text-align: center; width: 100%; padding: 4px 0; display: none; }
+  .edit-hint { font-size: 12px; color: var(--text-light); margin-top: 0.4rem; display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .main-subtitle { font-size: 15px; color: var(--text-mid); margin: 1.2rem 0 2.5rem; line-height: 1.7; }
+  .main-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .btn-main { display: inline-flex; align-items: center; gap: 10px; background: var(--ocean); color: white; border: none; border-radius: 100px; padding: 14px 36px; font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 20px rgba(46,125,159,0.35); }
+  .btn-main:hover { background: var(--ocean-dark); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(46,125,159,0.45); }
+  .btn-main svg { transition: transform 0.2s; }
+  .btn-main:hover svg { transform: translateX(3px); }
+  .btn-config-link { font-size: 12px; color: var(--text-light); background: none; border: none; cursor: pointer; text-decoration: underline; }
+  .sync-status { font-size: 11.5px; display: flex; align-items: center; gap: 5px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sync-dot.connected { background: #4CAF50; }
+  .sync-dot.disconnected { background: var(--coral); }
+  .sync-dot.connecting { background: #FFC107; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── LAYOUT ── */
+  .app-layout { display: flex; flex-direction: column; min-height: 100vh; background: var(--warm-white); }
+  .top-bar { background: rgba(253,250,243,0.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 0 1.5rem; display: flex; align-items: center; height: 58px; position: sticky; top: 0; z-index: 100; gap: 12px; }
+  .top-bar-title { font-family: 'Noto Serif KR', serif; font-size: 16px; font-weight: 500; color: var(--text-dark); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn-back { background: none; border: none; cursor: pointer; padding: 6px; color: var(--text-mid); display: flex; align-items: center; border-radius: 8px; transition: background 0.15s; }
+  .btn-back:hover { background: var(--sand); }
+
+  /* ── TABS ── */
+  .tab-bar { display: flex; background: var(--warm-white); border-bottom: 1px solid var(--border); padding: 0 1.5rem; overflow-x: auto; }
+  .tab-btn { background: none; border: none; border-bottom: 2.5px solid transparent; padding: 12px 18px; font-family: 'Noto Sans KR', sans-serif; font-size: 13.5px; font-weight: 400; color: var(--text-light); cursor: pointer; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+  .tab-btn.active { color: var(--ocean); border-bottom-color: var(--ocean); font-weight: 500; }
+  .tab-btn:hover:not(.active) { color: var(--text-mid); }
+  .tab-content { display: none; padding: 1.5rem; }
+  .tab-content.active { display: block; }
+
+  /* ── SETUP ── */
+  .setup-section { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+  .setup-section-title { font-size: 13px; font-weight: 600; color: var(--text-light); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .member-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--sand); border-radius: var(--radius-sm); border: 1px solid transparent; transition: border-color 0.2s; }
+  .member-row.is-me { border-color: var(--ocean-light); background: rgba(91,168,197,0.08); }
+  .member-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; cursor: pointer; transition: transform 0.15s; }
+  .member-avatar:hover { transform: scale(1.08); }
+  .member-name-input { flex: 1; background: transparent; border: none; outline: none; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; color: var(--text-dark); }
+  .me-badge { font-size: 10px; background: var(--ocean); color: white; padding: 2px 8px; border-radius: 100px; font-weight: 500; }
+  .treasurer-badge { font-size: 10px; background: var(--coral); color: white; padding: 2px 8px; border-radius: 100px; font-weight: 500; }
+  .btn-set-treasurer { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--text-light); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-set-treasurer:hover { border-color: var(--coral); color: var(--coral); }
+  .btn-icon { background: none; border: none; cursor: pointer; color: var(--text-light); padding: 4px; border-radius: 6px; display: flex; align-items: center; transition: all 0.15s; }
+  .btn-icon:hover { color: #E05050; background: #FEF0F0; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--ocean); color: white; border: none; border-radius: var(--radius-sm); padding: 12px 24px; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 12px rgba(46,125,159,0.3); }
+  .btn-primary:hover { background: var(--ocean-dark); transform: translateY(-1px); }
+  .btn-ghost { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 18px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; cursor: pointer; color: var(--text-mid); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-ghost:hover { background: var(--sand); }
+
+  /* ── EXPENSE TABLE ── */
+  .expense-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .total-chip { background: var(--ocean); color: white; padding: 6px 16px; border-radius: 100px; font-size: 13px; font-weight: 500; }
+  .expense-table-wrap { background: white; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+  .expense-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .expense-table th { background: var(--sand); padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text-mid); font-size: 11.5px; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .expense-table td { padding: 8px 10px; border-bottom: 1px solid rgba(160,130,80,0.1); vertical-align: middle; }
+  .expense-table tr:last-child td { border-bottom: none; }
+  .expense-table tr:hover td { background: rgba(245,238,216,0.4); }
+  .expense-input { background: transparent; border: none; outline: none; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; color: var(--text-dark); width: 100%; min-width: 0; }
+  .expense-input::placeholder { color: var(--text-light); }
+  .amount-input { background: transparent; border: none; outline: none; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 500; color: var(--text-dark); width: 100%; text-align: right; }
+  select.expense-select { background: transparent; border: none; outline: none; font-family: 'Noto Sans KR', sans-serif; font-size: 12px; color: var(--text-dark); cursor: pointer; padding: 0; max-width: 90px; }
+  .table-footer { background: rgba(46,125,159,0.06); padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); font-weight: 600; }
+  .receipt-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--text-light); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s; white-space: nowrap; }
+  .receipt-btn.has-receipt { border-color: var(--coral-light); color: var(--coral); background: rgba(232,115,90,0.06); }
+  .receipt-btn:hover { border-color: var(--coral); color: var(--coral); }
+
+  /* ── SUMMARY ── */
+  .summary-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .stat-card { background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem 1.2rem; }
+  .stat-label { font-size: 11.5px; color: var(--text-light); margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; color: var(--text-dark); }
+  .stat-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .member-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .member-summary-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; transition: box-shadow 0.2s; }
+  .member-summary-card:hover { box-shadow: 0 4px 16px rgba(44,36,22,0.09); }
+  .member-summary-card.is-treasurer { border-color: var(--coral-light); }
+  .avatar-lg { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+  .member-paid { font-size: 11.5px; color: var(--text-light); }
+  .arrow-chip { background: var(--ocean-light); color: white; border-radius: 100px; padding: 2px 10px; font-size: 11px; font-weight: 600; }
+
+  /* ── RECEIPTS ── */
+  .receipt-board { background: #F0EBE0; border-radius: var(--radius); min-height: 500px; padding: 2rem; position: relative; border: 1px solid rgba(160,130,80,0.25); background-image: repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(160,130,80,0.06) 29px, rgba(160,130,80,0.06) 30px); }
+  .receipt-item { position: relative; display: inline-flex; flex-direction: column; margin: 12px; cursor: pointer; transition: transform 0.2s; }
+  .receipt-item:hover { transform: scale(1.03) rotate(0deg) !important; z-index: 10; }
+  .masking-tape { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); width: 64px; height: 22px; border-radius: 3px; opacity: 0.82; z-index: 2; }
+  .receipt-img { width: 140px; height: 180px; object-fit: cover; border-radius: 4px; box-shadow: 2px 4px 12px rgba(44,36,22,0.18); display: block; }
+  .receipt-caption { margin-top: 8px; font-size: 11px; color: var(--text-mid); text-align: center; max-width: 140px; }
+  .empty-board { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: var(--text-light); gap: 8px; }
+
+  /* ── MISC ── */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text-dark); color: white; padding: 10px 24px; border-radius: 100px; font-size: 13px; z-index: 9999; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(44,36,22,0.45); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-box { background: var(--warm-white); border-radius: var(--radius); padding: 1.5rem; max-width: 360px; width: 100%; box-shadow: 0 20px 60px rgba(44,36,22,0.25); transform: scale(0.94); transition: transform 0.2s; }
+  .modal-overlay.open .modal-box { transform: scale(1); }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 1.2rem; justify-content: flex-end; }
+
+  /* ── LOADING OVERLAY ── */
+  .loading-overlay { position: fixed; inset: 0; background: var(--warm-white); z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  .loading-overlay.hidden { display: none; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--ocean); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text-light); }
+
+  @media (max-width: 600px) {
+    .main-card { padding: 2.5rem 1.8rem; }
+    .expense-table { font-size: 12px; }
+    .expense-table th, .expense-table td { padding: 7px 7px; }
+    .member-summary-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .config-card { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ LOADING ═══ -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Firebase 연결 중...</div>
+</div>
+
+<!-- ═══ FIREBASE CONFIG PAGE ═══ -->
+<div id="page-config" class="page">
+  <div class="config-card">
+    <div class="config-title">🔥 Firebase 연결 설정</div>
+    <div class="config-sub">처음 한 번만 설정하면 돼요. 설정값은 이 기기에 저장되고 친구들과 실시간으로 데이터가 공유돼요.</div>
+
+    <div class="config-steps">
+      <ol>
+        <li><a href="https://console.firebase.google.com" target="_blank">Firebase Console</a> → 프로젝트 만들기</li>
+        <li>Realtime Database → 데이터베이스 만들기 (테스트 모드)</li>
+        <li>프로젝트 설정 → 웹 앱 추가 → 아래 값 복사</li>
+      </ol>
+    </div>
+
+    <div class="config-field">
+      <label class="config-label">API KEY</label>
+      <input class="config-input" id="cfg-apiKey" placeholder="AIzaSy...">
+    </div>
+    <div class="config-field">
+      <label class="config-label">DATABASE URL</label>
+      <input class="config-input" id="cfg-dbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
+      <div class="config-hint">Realtime Database URL이에요 (Firestore URL 아님)</div>
+    </div>
+    <div class="config-field">
+      <label class="config-label">PROJECT ID</label>
+      <input class="config-input" id="cfg-projectId" placeholder="your-project-id">
+    </div>
+
+    <button class="btn-primary" onclick="saveFirebaseConfig()" style="width:100%; justify-content:center; margin-top:4px;">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      연결 시작
+    </button>
+  </div>
+</div>
+
+<!-- ═══ MAIN PAGE ═══ -->
+<div id="page-main" class="page">
+  <div class="main-bg-deco">
+    <div class="wave"></div><div class="wave2"></div>
+    <div class="deco-circle" style="width:320px;height:320px;top:-100px;right:-80px;"></div>
+    <div class="deco-circle" style="width:180px;height:180px;bottom:120px;left:-60px;"></div>
+  </div>
+  <div class="main-card">
+    <div class="main-tag">✈ 여행 정산</div>
+    <div class="main-title-wrap">
+      <div class="main-title" id="mainTitleText" title="클릭해서 수정">즐거웠다 제주...</div>
+      <input class="title-edit-input" id="mainTitleInput" type="text" value="즐거웠다 제주..." maxlength="40">
+    </div>
+    <div class="edit-hint">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      제목을 클릭해서 수정할 수 있어요
+    </div>
+    <p class="main-subtitle">여행은 끝났지만 추억과 정산은 남았다 😎<br>함께 쓴 돈, 깔끔하게 정리해봐요</p>
+    <div class="main-actions">
+      <div class="sync-status" id="syncStatus">
+        <div class="sync-dot connecting" id="syncDot"></div>
+        <span id="syncText">연결 중...</span>
+      </div>
+      <button class="btn-main" onclick="goToSetup()">
+        정산 시작하기
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button class="btn-config-link" onclick="showPage('page-config')">Firebase 설정 변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETUP PAGE ═══ -->
+<div id="page-setup" class="page">
+  <div class="app-layout">
+    <div class="top-bar">
+      <button class="btn-back" onclick="showPage('page-main')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="top-bar-title" id="setupTitle">즐거웠다 제주...</span>
+    </div>
+    <div style="padding:1.5rem; max-width:600px; margin:0 auto; width:100%;">
+
+      <div class="setup-section">
+        <div class="setup-section-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          내 정보 등록
+        </div>
+        <p style="font-size:12.5px; color:var(--text-light); margin-bottom:14px;">이 기기로 입장하면 아래 이름으로 등록돼요. 나만 수정할 수 있어요.</p>
+        <div class="member-row is-me" style="margin-bottom:0;">
+          <div class="member-avatar" id="myAvatar" onclick="cycleMemberColorMe()" title="클릭해서 색상 변경" style="background:#2E7D9F20; color:#2E7D9F; border:2px solid #2E7D9F40; cursor:pointer;">나</div>
+          <input class="member-name-input" id="myNameInput" type="text" placeholder="닉네임 입력 (예: 민지)" maxlength="10" oninput="updateMyName(this.value)">
+          <span class="me-badge">나</span>
+          <div id="myTreasurerBadgeWrap"></div>
+        </div>
+        <div style="margin-top:10px;">
+          <label style="font-size:12px; color:var(--text-light); display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="noPaymentCheck" onchange="toggleNoPayment(this.checked)" style="accent-color:var(--coral); width:14px; height:14px;">
+            결제 내역 없어요 (엔빵만 낼게요)
+          </label>
+        </div>
+        <div style="margin-top:10px;">
+          <button id="btnSetMeTreasurer" class="btn-set-treasurer" onclick="setTreasurer(state.myId)">💳 회계 담당자로 지정</button>
+        </div>
+      </div>
+
+      <div class="setup-section">
+        <div class="setup-section-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          참가한 멤버
+          <span id="memberCountBadge" style="font-size:11px; background:var(--ocean); color:white; border-radius:100px; padding:1px 8px; font-weight:500;">0명</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">다른 사람의 정보는 수정할 수 없어요. 각자 본인 기기에서 직접 등록해요.</p>
+        <div id="memberList"></div>
+      </div>
+
+      <div class="setup-section" style="background:rgba(46,125,159,0.04); border-color:rgba(46,125,159,0.2);">
+        <div style="font-size:12px; color:var(--text-mid); display:flex; align-items:flex-start; gap:8px;">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          이 페이지 링크를 친구들과 공유하면 각자 기기에서 자기 이름을 등록할 수 있어요. 데이터는 Firebase를 통해 실시간으로 모두에게 반영돼요.
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="goToApp()" style="width:100%; justify-content:center; margin-top:0.5rem">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        입장하기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP PAGE ═══ -->
+<div id="page-app" class="page">
+  <div class="app-layout">
+    <div class="top-bar">
+      <button class="btn-back" onclick="showPage('page-setup')">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="top-bar-title" id="appTitle">즐거웠다 제주...</span>
+      <div class="sync-status" style="font-size:11px;">
+        <div class="sync-dot connecting" id="appSyncDot"></div>
+        <span id="appSyncText">동기화 중</span>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('expense')" id="tab-expense">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        지출 내역
+      </button>
+      <button class="tab-btn" onclick="switchTab('summary')" id="tab-summary">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        정산 요약
+      </button>
+      <button class="tab-btn" onclick="switchTab('receipts')" id="tab-receipts">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        영수증 모아보기
+      </button>
+    </div>
+
+    <!-- EXPENSE TAB -->
+    <div class="tab-content active" id="tab-content-expense">
+      <div class="expense-controls">
+        <button class="btn-primary" onclick="addExpenseRow()" style="padding:9px 18px; font-size:13px;">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          항목 추가
+        </button>
+        <div class="total-chip" id="totalChip">합계 ₩0</div>
+      </div>
+      <div class="expense-table-wrap">
+        <table class="expense-table">
+          <thead><tr>
+            <th style="width:90px">카테고리</th>
+            <th>내용</th>
+            <th style="width:100px">금액</th>
+            <th style="width:70px">내가 쏠게</th>
+            <th style="width:70px">영수증</th>
+            <th style="width:32px"></th>
+          </tr></thead>
+          <tbody id="expenseBody"></tbody>
+        </table>
+        <div class="table-footer">
+          <span style="font-size:12.5px; color:var(--text-mid);">정산 포함 지출</span>
+          <span style="color:var(--ocean); font-size:15px;" id="totalAmount">₩0</span>
+        </div>
+      </div>
+      <p style="font-size:11.5px; color:var(--text-light); text-align:center;">영수증은 각 행의 📎 버튼으로 첨부하세요</p>
+    </div>
+
+    <!-- SUMMARY TAB -->
+    <div class="tab-content" id="tab-content-summary">
+      <div class="summary-header" id="summaryHeader"></div>
+      <div style="font-size:12px; color:var(--text-light); margin-bottom:10px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase;">멤버별 정산 현황</div>
+      <div class="member-summary-grid" id="memberSummaryGrid"></div>
+    </div>
+
+    <!-- RECEIPTS TAB -->
+    <div class="tab-content" id="tab-content-receipts">
+      <div class="receipt-board" id="receiptBoard">
+        <div class="empty-board" id="emptyBoard">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:0.3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>아직 첨부된 영수증이 없어요</span>
+          <span style="font-size:11px">지출 내역 탭에서 영수증을 첨부해보세요</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RECEIPT MODAL ═══ -->
+<div class="modal-overlay" id="receiptModal">
+  <div class="modal-box">
+    <div class="modal-title">영수증 첨부</div>
+    <div id="receiptPreviewWrap" style="margin-bottom:10px; min-height:40px;"></div>
+    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--ocean); border:1.5px dashed var(--ocean-light); border-radius:10px; padding:10px 14px; margin-bottom:6px;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      이미지 업로드
+      <input type="file" accept="image/*" id="receiptFileInput" style="display:none" onchange="handleReceiptUpload(event)">
+    </label>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeModal()">닫기</button>
+      <button class="btn-primary" onclick="saveReceipt()" style="padding:8px 18px; font-size:13px;">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══ FIREBASE SDK ═══ -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, onValue, set, update, remove, get }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── CONSTANTS ──
+const COLORS = ['#2E7D9F','#E8735A','#4A7C59','#8B5E9E','#C47C2B','#3A7DBD','#B5584D','#4A8A6E'];
+const TAPE_COLORS = ['#F2C4A8','#A8D4E8','#C8E8B8','#E8C8D8','#E8D8A8','#B8C8E8','#D8C8E8'];
+const CATEGORIES = [
+  { id:'food',      label:'식비',      icon:'🍽' },
+  { id:'transport', label:'교통',      icon:'🚗' },
+  { id:'stay',      label:'숙소',      icon:'🏡' },
+  { id:'activity',  label:'액티비티',  icon:'🏄' },
+  { id:'shopping',  label:'쇼핑',      icon:'🛍' },
+  { id:'etc',       label:'기타',      icon:'📦' },
+];
+const LS_MY_ID  = 'stb_myId';
+const LS_CONFIG = 'stb_fbConfig';
+
+// ── LOCAL STATE ──
+let db = null;
+let dbRef = null;
+let state = { title:'즐거웠다 제주...', members:[], treasurer:null, expenses:[] };
+let myId = localStorage.getItem(LS_MY_ID);
+if (!myId) { myId = 'u_' + Math.random().toString(36).slice(2,9); localStorage.setItem(LS_MY_ID, myId); }
+
+// ── HELPERS ──
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+window.showPage = showPage;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function setLoading(msg) {
+  const el = document.getElementById('loadingOverlay');
+  el.classList.remove('hidden');
+  document.getElementById('loadingText').textContent = msg;
+}
+function setSyncStatus(status) {
+  // status: 'connected' | 'disconnected' | 'connecting'
+  const labels = { connected:'실시간 동기화 중', disconnected:'오프라인', connecting:'연결 중...' };
+  ['syncDot','appSyncDot'].forEach(id => {
+    const d = document.getElementById(id);
+    if (d) { d.className = 'sync-dot ' + status; }
+  });
+  ['syncText','appSyncText'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = labels[status] || '';
+  });
+}
+
+// ── FIREBASE SETUP ──
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(LS_CONFIG)); } catch(e) { return null; }
+}
+
+window.saveFirebaseConfig = function() {
+  const apiKey    = document.getElementById('cfg-apiKey').value.trim();
+  const databaseURL = document.getElementById('cfg-dbUrl').value.trim();
+  const projectId = document.getElementById('cfg-projectId').value.trim();
+  if (!apiKey || !databaseURL || !projectId) { showToast('모든 항목을 입력해주세요'); return; }
+  const cfg = { apiKey, databaseURL, projectId, authDomain: projectId + '.firebaseapp.com', storageBucket: projectId + '.appspot.com', messagingSenderId: '0', appId: '0' };
+  localStorage.setItem(LS_CONFIG, JSON.stringify(cfg));
+  initFirebase(cfg);
+};
+
+function initFirebase(cfg) {
+  try {
+    setLoading('Firebase 연결 중...');
+    const app = initializeApp(cfg, 'splitthebill_' + Date.now());
+    db = getDatabase(app);
+    dbRef = ref(db, 'splitthebill');
+
+    // 연결 상태 감지
+    const connRef = ref(db, '.info/connected');
+    onValue(connRef, snap => {
+      setSyncStatus(snap.val() ? 'connected' : 'disconnected');
+    });
+
+    // 데이터 실시간 구독
+    onValue(dbRef, snap => {
+      const data = snap.val();
+      if (data) {
+        state = { title:'즐거웠다 제주...', members:[], treasurer:null, expenses:[], ...data };
+        // expenses/members가 object일 수 있으므로 array 변환
+        if (state.expenses && !Array.isArray(state.expenses)) state.expenses = Object.values(state.expenses);
+        if (state.members && !Array.isArray(state.members)) state.members = Object.values(state.members);
+        state.expenses = state.expenses || [];
+        state.members  = state.members  || [];
+      }
+      applyStateToUI();
+    }, err => {
+      setSyncStatus('disconnected');
+      showToast('Firebase 오류: ' + err.message);
+    });
+
+    hideLoading();
+    showPage('page-main');
+  } catch(e) {
+    hideLoading();
+    showToast('Firebase 초기화 실패: ' + e.message);
+    showPage('page-config');
+  }
+}
+
+async function pushState(partial) {
+  if (!dbRef) return;
+  try {
+    await update(dbRef, partial);
+  } catch(e) {
+    showToast('저장 실패: ' + e.message);
+  }
+}
+async function pushExpense(exp) {
+  if (!db) return;
+  await set(ref(db, 'splitthebill/expenses/' + exp.id), exp);
+}
+async function deleteExpenseDb(id) {
+  if (!db) return;
+  await remove(ref(db, 'splitthebill/expenses/' + id));
+}
+async function pushMember(m) {
+  if (!db) return;
+  await set(ref(db, 'splitthebill/members/' + m.id), m);
+}
+
+// ── UI SYNC ──
+function applyStateToUI() {
+  // 제목
+  const tt = document.getElementById('mainTitleText');
+  const ti = document.getElementById('mainTitleInput');
+  if (tt && document.activeElement !== ti) {
+    tt.textContent = state.title;
+    ti.value = state.title;
+  }
+  document.getElementById('setupTitle').textContent = state.title;
+  document.getElementById('appTitle').textContent = state.title;
+  // 현재 페이지에 맞게 렌더
+  const activePage = document.querySelector('.page.active')?.id;
+  if (activePage === 'page-setup') renderSetup();
+  if (activePage === 'page-app') {
+    renderExpenseTable();
+    const activeTab = document.querySelector('.tab-btn.active')?.id?.replace('tab-','');
+    if (activeTab === 'summary') recalc();
+    if (activeTab === 'receipts') renderReceipts();
+  }
+}
+
+// ── TITLE ──
+const titleText  = document.getElementById('mainTitleText');
+const titleInput = document.getElementById('mainTitleInput');
+titleText.addEventListener('click', () => {
+  titleText.style.display = 'none';
+  titleInput.style.display = 'block';
+  titleInput.value = titleText.textContent;
+  titleInput.focus(); titleInput.select();
+});
+titleInput.addEventListener('blur', applyTitle);
+titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') applyTitle(); });
+function applyTitle() {
+  const v = titleInput.value.trim() || '즐거웠다 제주...';
+  titleText.textContent = v;
+  titleText.style.display = 'inline-block';
+  titleInput.style.display = 'none';
+  state.title = v;
+  pushState({ title: v });
+}
+
+// ── MEMBERS ──
+window.goToSetup = function() {
+  state.title = titleText.textContent.trim() || '즐거웠다 제주...';
+  document.getElementById('setupTitle').textContent = state.title;
+  // 내 멤버 없으면 자동 추가
+  if (!state.members.find(m => m.id === myId)) {
+    const me = { id: myId, name: '', color: COLORS[state.members.length % COLORS.length], noPayment: false };
+    state.members.push(me);
+    pushMember(me);
+  }
+  renderSetup();
+  showPage('page-setup');
+};
+
+function renderSetup() {
+  const me = state.members.find(m => m.id === myId);
+  if (!me) return;
+  document.getElementById('myNameInput').value = me.name;
+  document.getElementById('myAvatar').textContent = me.name ? me.name.slice(0,2) : '나';
+  document.getElementById('myAvatar').style.cssText += `background:${me.color}20; color:${me.color}; border:2px solid ${me.color}40;`;
+  document.getElementById('noPaymentCheck').checked = !!me.noPayment;
+  const isMeTreasurer = state.treasurer === myId;
+  document.getElementById('myTreasurerBadgeWrap').innerHTML = isMeTreasurer ? '<span class="treasurer-badge">💳 회계</span>' : '';
+  document.getElementById('btnSetMeTreasurer').style.display = isMeTreasurer ? 'none' : 'inline-flex';
+
+  const others = state.members.filter(m => m.id !== myId);
+  document.getElementById('memberCountBadge').textContent = others.length + '명';
+  const list = document.getElementById('memberList');
+  if (others.length === 0) {
+    list.innerHTML = '<div style="font-size:13px; color:var(--text-light); padding:8px 0;">아직 다른 멤버가 없어요 — 링크를 공유해보세요</div>';
+    return;
+  }
+  list.innerHTML = '';
+  others.forEach(m => {
+    const isT = m.id === state.treasurer;
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    row.style.opacity = '0.85';
+    row.innerHTML = `
+      <div class="member-avatar" style="background:${m.color}20; color:${m.color}; border:2px solid ${m.color}40; cursor:default;">${m.name ? m.name.slice(0,2) : '?'}</div>
+      <span style="font-size:14px; flex:1; color:var(--text-dark);">${m.name || '(이름 없음)'}</span>
+      ${m.noPayment ? '<span style="font-size:10px; background:#FFF0E8; color:var(--coral-dark); padding:2px 8px; border-radius:100px;">결제없음</span>' : ''}
+      ${isT ? '<span class="treasurer-badge">💳 회계</span>' : ''}
+      <span style="font-size:11px; color:var(--text-light);">🔒 읽기전용</span>
+    `;
+    list.appendChild(row);
+  });
+}
+
+window.updateMyName = function(val) {
+  const me = state.members.find(m => m.id === myId);
+  if (!me) return;
+  me.name = val;
+  document.getElementById('myAvatar').textContent = val ? val.slice(0,2) : '나';
+  pushMember(me);
+};
+window.toggleNoPayment = function(checked) {
+  const me = state.members.find(m => m.id === myId);
+  if (!me) return;
+  me.noPayment = checked;
+  pushMember(me);
+};
+window.cycleMemberColorMe = function() {
+  const me = state.members.find(m => m.id === myId);
+  if (!me) return;
+  const cur = COLORS.indexOf(me.color);
+  me.color = COLORS[(cur + 1) % COLORS.length];
+  pushMember(me);
+  renderSetup();
+};
+window.setTreasurer = function(id) {
+  state.treasurer = id;
+  pushState({ treasurer: id });
+  renderSetup();
+  showToast('회계 담당자로 지정됐어요 💳');
+};
+
+window.goToApp = function() {
+  const me = state.members.find(m => m.id === myId);
+  if (!me || !me.name.trim()) { showToast('닉네임을 먼저 입력해주세요!'); return; }
+  document.getElementById('appTitle').textContent = state.title;
+  renderExpenseTable();
+  showPage('page-app');
+};
+
+// ── EXPENSES ──
+window.addExpenseRow = function() {
+  const id = 'exp_' + Date.now();
+  const exp = { id, category:'food', desc:'', amount:0, payer: myId, treat: false, receipt: null };
+  pushExpense(exp);
+};
+window.deleteExpense = function(id) {
+  deleteExpenseDb(id);
+  renderReceipts();
+};
+window.toggleTreat = function(id) {
+  const exp = state.expenses.find(e => e.id === id);
+  if (!exp) return;
+  exp.treat = !exp.treat;
+  pushExpense(exp);
+};
+function renderExpenseTable() {
+  const tbody = document.getElementById('expenseBody');
+  tbody.innerHTML = '';
+  (state.expenses || []).forEach(exp => {
+    const tr = document.createElement('tr');
+    if (exp.treat) tr.style.opacity = '0.45';
+    const catOptions = CATEGORIES.map(c =>
+      `<option value="${c.id}" ${c.id === exp.category ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+    ).join('');
+    tr.innerHTML = `
+      <td><select class="expense-select" onchange="updateExp('${exp.id}','category',this.value)">${catOptions}</select></td>
+      <td><input class="expense-input" type="text" placeholder="내용 입력" value="${exp.desc||''}" oninput="updateExp('${exp.id}','desc',this.value)"></td>
+      <td><input class="amount-input" type="text" inputmode="numeric" placeholder="0"
+        value="${exp.amount > 0 ? exp.amount.toLocaleString() : ''}" oninput="updateExpAmount('${exp.id}',this.value)"></td>
+      <td style="text-align:center;">
+        <button onclick="toggleTreat('${exp.id}')"
+          style="background:${exp.treat ? 'var(--coral)' : 'none'}; border:1.5px solid ${exp.treat ? 'var(--coral)' : 'var(--border)'}; border-radius:6px; padding:3px 8px; font-size:11px; color:${exp.treat ? 'white' : 'var(--text-light)'}; cursor:pointer; white-space:nowrap; transition:all 0.15s;">
+          ${exp.treat ? '🎁 쐈음' : '쏠게'}
+        </button>
+      </td>
+      <td>
+        <button class="receipt-btn ${exp.receipt ? 'has-receipt' : ''}" onclick="openReceiptModal('${exp.id}')">
+          ${exp.receipt ? '📎 보기' : '📎 첨부'}
+        </button>
+      </td>
+      <td><button class="btn-icon" onclick="deleteExpense('${exp.id}')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateTotal();
+}
+window.updateExp = function(id, key, val) {
+  const exp = state.expenses.find(e => e.id === id);
+  if (!exp) return;
+  exp[key] = val;
+  if (key === 'category') renderExpenseTable();
+  pushExpense(exp);
+};
+window.updateExpAmount = function(id, val) {
+  const clean = parseInt(val.replace(/,/g,'')) || 0;
+  const exp = state.expenses.find(e => e.id === id);
+  if (exp) { exp.amount = clean; pushExpense(exp); }
+  updateTotal();
+};
+function updateTotal() {
+  const total = (state.expenses||[]).filter(e => !e.treat).reduce((s,e) => s + (e.amount||0), 0);
+  document.getElementById('totalAmount').textContent = '₩' + total.toLocaleString();
+  document.getElementById('totalChip').textContent   = '합계 ₩' + total.toLocaleString();
+}
+
+// ── SUMMARY ──
+function recalc() {
+  const settled = (state.expenses||[]).filter(e => !e.treat);
+  const total = settled.reduce((s,e) => s + (e.amount||0), 0);
+  const treatTotal = (state.expenses||[]).filter(e => e.treat).reduce((s,e) => s + (e.amount||0), 0);
+  const payers = state.members.filter(m => !m.noPayment);
+  const n = payers.length || 1;
+  const perPerson = Math.round(total / n);
+
+  const paid = {};
+  state.members.forEach(m => paid[m.id] = 0);
+  settled.forEach(e => { if (paid[e.payer] !== undefined) paid[e.payer] += e.amount || 0; });
+  const net = {};
+  state.members.forEach(m => { net[m.id] = paid[m.id] - (m.noPayment ? 0 : perPerson); });
+
+  const transactions = calcSettlement(net);
+  const sendMap = {};
+  transactions.forEach(t => { if (!sendMap[t.from]) sendMap[t.from] = []; sendMap[t.from].push(t); });
+
+  document.getElementById('summaryHeader').innerHTML = `
+    <div class="stat-card"><div class="stat-label">정산 대상 지출</div>
+      <div class="stat-value" style="font-size:20px;">₩${total.toLocaleString()}</div>
+      <div class="stat-sub">${settled.length}건${treatTotal>0?` · 쏜 금액 ₩${treatTotal.toLocaleString()} 제외`:''}</div>
+    </div>
+    <div class="stat-card"><div class="stat-label">1인당 부담</div>
+      <div class="stat-value" style="font-size:20px;">₩${perPerson.toLocaleString()}</div>
+      <div class="stat-sub">${n}명 기준${state.members.length>n?` (결제없음 ${state.members.length-n}명 제외)`:''}</div>
+    </div>`;
+
+  const grid = document.getElementById('memberSummaryGrid');
+  grid.innerHTML = '';
+  state.members.forEach(m => {
+    const owed = -net[m.id];
+    const isT = m.id === state.treasurer;
+    const isMe = m.id === myId;
+    const card = document.createElement('div');
+    card.className = 'member-summary-card' + (isT ? ' is-treasurer' : '');
+    if (m.noPayment) {
+      card.innerHTML = `
+        <div class="avatar-lg" style="background:${m.color}20;color:${m.color};border:2.5px solid ${m.color}50;font-size:20px;">🙏</div>
+        <div style="font-size:14px;font-weight:600;">${m.name||'?'}${isMe?' 👤':''}</div>
+        <div style="font-size:18px;margin:2px 0;">헤헤 감사해요</div>
+        <div style="font-size:11px;color:var(--text-light);">결제 내역 없음</div>`;
+    } else {
+      const sends = sendMap[m.id] || [];
+      const receives = transactions.filter(t => t.to === m.id);
+      let transferHTML = '';
+      if (sends.length > 0) {
+        transferHTML = sends.map(s => {
+          const to = state.members.find(x => x.id === s.to);
+          return `<div style="font-size:12px;color:var(--coral-dark);margin-top:4px;">→ ${to?.name||'?'}${to?.id===state.treasurer?' 💳':''} 에게<br><strong>₩${s.amount.toLocaleString()}</strong> 송금</div>`;
+        }).join('');
+      } else if (receives.length > 0) {
+        transferHTML = receives.map(r => {
+          const from = state.members.find(x => x.id === r.from);
+          return `<div style="font-size:12px;color:var(--leaf);margin-top:4px;">← ${from?.name||'?'} 에게서<br><strong>₩${r.amount.toLocaleString()}</strong> 받음</div>`;
+        }).join('');
+      } else {
+        transferHTML = `<div style="font-size:12px;color:var(--text-light);margin-top:4px;">송금 없음</div>`;
+      }
+      const amtLabel = owed > 0
+        ? `<span style="font-size:13px;font-weight:600;color:var(--coral-dark);">₩${owed.toLocaleString()} 내야 해요</span>`
+        : owed < 0
+        ? `<span style="font-size:13px;font-weight:600;color:var(--leaf);">₩${Math.abs(owed).toLocaleString()} 받아야 해요</span>`
+        : `<span style="font-size:13px;color:var(--text-light);">딱 맞아요</span>`;
+      card.innerHTML = `
+        <div class="avatar-lg" style="background:${m.color}20;color:${m.color};border:2.5px solid ${m.color}50">${(m.name||'?').slice(0,2)}</div>
+        <div style="font-size:14px;font-weight:600;">${m.name||'?'}${isT?' 💳':''}${isMe?' 👤':''}</div>
+        <div class="member-paid">결제 ₩${(paid[m.id]||0).toLocaleString()}</div>
+        ${amtLabel}
+        <div style="border-top:1px solid var(--border);width:100%;margin-top:8px;padding-top:8px;text-align:left;">${transferHTML}</div>`;
+    }
+    grid.appendChild(card);
+  });
+}
+function calcSettlement(net) {
+  const debtors   = state.members.filter(m => net[m.id] < -0.5).map(m => ({ id:m.id, amt:-net[m.id] })).sort((a,b)=>b.amt-a.amt);
+  const creditors = state.members.filter(m => net[m.id] >  0.5).map(m => ({ id:m.id, amt: net[m.id] })).sort((a,b)=>b.amt-a.amt);
+  if (state.treasurer) {
+    const ti = creditors.findIndex(c => c.id === state.treasurer);
+    if (ti > 0) { const [t] = creditors.splice(ti,1); creditors.unshift(t); }
+  }
+  const txns = [];
+  let di=0, ci=0;
+  while (di<debtors.length && ci<creditors.length) {
+    const send = Math.min(debtors[di].amt, creditors[ci].amt);
+    if (send > 0.5) txns.push({ from:debtors[di].id, to:creditors[ci].id, amount:Math.round(send) });
+    debtors[di].amt -= send; creditors[ci].amt -= send;
+    if (debtors[di].amt < 0.5) di++;
+    if (creditors[ci].amt < 0.5) ci++;
+  }
+  return txns;
+}
+
+// ── RECEIPTS ──
+let currentReceiptExpId = null;
+let pendingReceiptData  = null;
+
+window.openReceiptModal = function(expId) {
+  currentReceiptExpId = expId; pendingReceiptData = null;
+  const exp = state.expenses.find(e => e.id === expId);
+  const wrap = document.getElementById('receiptPreviewWrap');
+  wrap.innerHTML = exp?.receipt
+    ? `<img src="${exp.receipt}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-bottom:4px;">
+       <button onclick="removeReceipt('${expId}')" style="font-size:11px;color:#E05050;background:none;border:none;cursor:pointer;">삭제</button>`
+    : '';
+  document.getElementById('receiptModal').classList.add('open');
+};
+window.closeModal = function() {
+  document.getElementById('receiptModal').classList.remove('open');
+  currentReceiptExpId = null; pendingReceiptData = null;
+};
+window.handleReceiptUpload = function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingReceiptData = ev.target.result;
+    document.getElementById('receiptPreviewWrap').innerHTML =
+      `<img src="${pendingReceiptData}" style="width:100%;max-height:200px;object-fit:contain;border-radius:8px;">`;
+  };
+  reader.readAsDataURL(file);
+};
+window.saveReceipt = function() {
+  if (!currentReceiptExpId || !pendingReceiptData) { closeModal(); return; }
+  const exp = state.expenses.find(e => e.id === currentReceiptExpId);
+  if (exp) { exp.receipt = pendingReceiptData; pushExpense(exp); showToast('영수증이 저장되었어요!'); }
+  closeModal();
+};
+window.removeReceipt = function(expId) {
+  const exp = state.expenses.find(e => e.id === expId);
+  if (exp) { exp.receipt = null; pushExpense(exp); }
+  closeModal();
+};
+function renderReceipts() {
+  const board = document.getElementById('receiptBoard');
+  const receipts = (state.expenses||[]).filter(e => e.receipt);
+  if (receipts.length === 0) {
+    board.innerHTML = '';
+    const empty = document.getElementById('emptyBoard') || (() => {
+      const d = document.createElement('div'); d.id='emptyBoard'; d.className='empty-board'; return d;
+    })();
+    empty.innerHTML = `<svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:0.3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <span>아직 첨부된 영수증이 없어요</span><span style="font-size:11px">지출 내역 탭에서 영수증을 첨부해보세요</span>`;
+    empty.style.display = 'flex';
+    board.appendChild(empty);
+    return;
+  }
+  board.innerHTML = '';
+  receipts.forEach((exp, i) => {
+    const rot = (Math.random() * 8 - 4).toFixed(1);
+    const tapeColor = TAPE_COLORS[i % TAPE_COLORS.length];
+    const cat = CATEGORIES.find(c => c.id === exp.category) || CATEGORIES[5];
+    const payer = state.members.find(m => m.id === exp.payer);
+    const item = document.createElement('div');
+    item.className = 'receipt-item';
+    item.style.transform = `rotate(${rot}deg)`;
+    item.innerHTML = `
+      <div class="masking-tape" style="background:${tapeColor}; background-image:repeating-linear-gradient(90deg,rgba(255,255,255,0.35) 0px,rgba(255,255,255,0.35) 6px,transparent 6px,transparent 12px);"></div>
+      <img class="receipt-img" src="${exp.receipt}" alt="영수증">
+      <div class="receipt-caption">${cat.icon} ${exp.desc||cat.label}<br>${payer?.name||'?'} · ₩${(exp.amount||0).toLocaleString()}</div>`;
+    board.appendChild(item);
+  });
+}
+
+// ── TABS ──
+window.switchTab = function(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-content-' + name).classList.add('active');
+  if (name === 'summary') recalc();
+  if (name === 'receipts') renderReceipts();
+};
+
+// ── INIT ──
+setSyncStatus('connecting');
+const cfg = getConfig();
+if (cfg) {
+  // Firebase config가 있으면 바로 연결
+  document.getElementById('cfg-apiKey').value    = cfg.apiKey || '';
+  document.getElementById('cfg-dbUrl').value     = cfg.databaseURL || '';
+  document.getElementById('cfg-projectId').value = cfg.projectId || '';
+  initFirebase(cfg);
+} else {
+  // 처음 방문 → config 페이지
+  hideLoading();
+  showPage('page-config');
+}
+
+</script>
+</body>
+</html>
