@@ -341,6 +341,7 @@
             <th style="width:90px">카테고리</th>
             <th>내용</th>
             <th style="width:100px">금액</th>
+            <th style="width:80px">결제자</th>
             <th style="width:70px">내가 쏠게</th>
             <th style="width:70px">영수증</th>
             <th style="width:32px"></th>
@@ -720,6 +721,9 @@ function renderExpenseTable() {
     const catOptions = CATEGORIES.map(c =>
       `<option value="${c.id}" ${c.id === exp.category ? 'selected' : ''}>${c.icon} ${c.label}</option>`
     ).join('');
+    const payerOptions = state.members.map(m =>
+      `<option value="${m.id}" ${m.id === exp.payer ? 'selected' : ''}>${m.name||'?'}</option>`
+    ).join('');
     tr.innerHTML = `
       <td><select class="expense-select" onchange="updateExp('${exp.id}','category',this.value)">${catOptions}</select></td>
       <td><input class="expense-input" type="text" placeholder="내용 입력" value="${exp.desc||''}"
@@ -728,6 +732,7 @@ function renderExpenseTable() {
       <td><input class="amount-input" type="text" inputmode="numeric" placeholder="0"
         value="${exp.amount > 0 ? exp.amount.toLocaleString() : ''}"
         oninput="updateExpAmount('${exp.id}',this.value)"></td>
+      <td><select class="expense-select" style="max-width:72px;" onchange="updateExp('${exp.id}','payer',this.value)">${payerOptions}</select></td>
       <td style="text-align:center;">
         <button onclick="toggleTreat('${exp.id}')"
           style="background:${exp.treat ? 'var(--coral)' : 'none'}; border:1.5px solid ${exp.treat ? 'var(--coral)' : 'var(--border)'}; border-radius:6px; padding:3px 8px; font-size:11px; color:${exp.treat ? 'white' : 'var(--text-light)'}; cursor:pointer; white-space:nowrap; transition:all 0.15s;">
