@@ -276,7 +276,7 @@
           </label>
         </div>
         <div style="margin-top:10px;">
-          <button id="btnSetMeTreasurer" class="btn-set-treasurer" onclick="setTreasurer(window._myId)">💳 회계 담당자로 지정</button>
+          <button id="btnSetMeTreasurer" class="btn-set-treasurer">💳 회계 담당자로 지정</button>
         </div>
       </div>
 
@@ -591,6 +591,14 @@ window.goToSetup = function() {
     state.members.push(me);
     pushMember(me);
   }
+  // 회계 담당자 버튼 이벤트 직접 연결
+  const btn = document.getElementById('btnSetMeTreasurer');
+  btn.onclick = () => {
+    state.treasurer = myId;
+    pushState({ treasurer: myId });
+    renderSetup();
+    showToast('회계 담당자로 지정됐어요 💳');
+  };
   renderSetup();
   showPage('page-setup');
 };
