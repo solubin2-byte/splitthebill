@@ -19,7 +19,7 @@
     --radius: 16px; --radius-sm: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Noto Sans KR', sans-serif; background: var(--sand); color: var(--text-dark); min-height: 100vh; overflow-x: hidden; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--sand); color: var(--text-dark); min-height: 100vh; overflow-x: hidden; padding-bottom: 44px; }
 
   /* ── PAGES ── */
   .page { display: none; min-height: 100vh; }
@@ -272,11 +272,11 @@
         <div style="margin-top:10px;">
           <label style="font-size:12px; color:var(--text-light); display:flex; align-items:center; gap:6px; cursor:pointer;">
             <input type="checkbox" id="noPaymentCheck" onchange="toggleNoPayment(this.checked)" style="accent-color:var(--coral); width:14px; height:14px;">
-            결제 내역 없어요 (엔빵만 낼게요)
+            결제 내역 없어요 (엔빵에만 참여할게요)
           </label>
         </div>
         <div style="margin-top:10px;">
-          <button id="btnSetMeTreasurer" class="btn-set-treasurer" onclick="setTreasurer(state.myId)">💳 회계 담당자로 지정</button>
+          <button id="btnSetMeTreasurer" class="btn-set-treasurer" onclick="setTreasurer(window._myId)">💳 회계 담당자로 지정</button>
         </div>
       </div>
 
@@ -288,13 +288,6 @@
         </div>
         <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">다른 사람의 정보는 수정할 수 없어요. 각자 본인 기기에서 직접 등록해요.</p>
         <div id="memberList"></div>
-      </div>
-
-      <div class="setup-section" style="background:rgba(46,125,159,0.04); border-color:rgba(46,125,159,0.2);">
-        <div style="font-size:12px; color:var(--text-mid); display:flex; align-items:flex-start; gap:8px;">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          이 페이지 링크를 친구들과 공유하면 각자 기기에서 자기 이름을 등록할 수 있어요. 데이터는 Firebase를 통해 실시간으로 모두에게 반영돼요.
-        </div>
       </div>
 
       <button class="btn-primary" onclick="goToApp()" style="width:100%; justify-content:center; margin-top:0.5rem">
@@ -402,6 +395,11 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- FOOTER -->
+<div style="position:fixed; bottom:0; left:0; width:100%; background:rgba(253,250,243,0.92); backdrop-filter:blur(8px); border-top:1px solid rgba(160,130,80,0.15); padding:10px 0; text-align:center; font-size:11.5px; color:#A08C64; z-index:8000; pointer-events:none;">
+  만든이: 소르빈😎 &nbsp;|&nbsp; 만든 날짜: 2026년 5월 19일
+</div>
+
 <!-- ═══ FIREBASE SDK ═══ -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -428,6 +426,7 @@ let dbRef = null;
 let state = { title:'즐거웠다 제주...', members:[], treasurer:null, expenses:[] };
 let myId = localStorage.getItem(LS_MY_ID);
 if (!myId) { myId = 'u_' + Math.random().toString(36).slice(2,9); localStorage.setItem(LS_MY_ID, myId); }
+window._myId = myId;
 
 // ── HELPERS ──
 function showPage(id) {
@@ -611,7 +610,12 @@ function renderSetup() {
   document.getElementById('memberCountBadge').textContent = others.length + '명';
   const list = document.getElementById('memberList');
   if (others.length === 0) {
-    list.innerHTML = '<div style="font-size:13px; color:var(--text-light); padding:8px 0;">아직 다른 멤버가 없어요 — 링크를 공유해보세요</div>';
+    list.innerHTML = `
+      <div style="font-size:13px; color:var(--text-light); padding:8px 0 10px;">아직 다른 멤버가 없어요</div>
+      <button onclick="shareLink()" style="display:flex; align-items:center; gap:8px; background:var(--ocean); color:white; border:none; border-radius:var(--radius-sm); padding:10px 18px; font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:500; cursor:pointer; width:100%; justify-content:center;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        친구에게 링크 공유하기
+      </button>`;
     return;
   }
   list.innerHTML = '';
@@ -651,6 +655,21 @@ window.cycleMemberColorMe = function() {
   me.color = COLORS[(cur + 1) % COLORS.length];
   pushMember(me);
   renderSetup();
+};
+window.shareLink = async function() {
+  const url = location.href;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Split the Bill', text: '여행 정산에 참여해요!', url });
+    } catch(e) {}
+  } else {
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('링크가 복사됐어요 🔗');
+    } catch(e) {
+      showToast('링크: ' + url);
+    }
+  }
 };
 window.setTreasurer = function(id) {
   state.treasurer = id;
