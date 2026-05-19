@@ -328,13 +328,6 @@
 
     <!-- EXPENSE TAB -->
     <div class="tab-content active" id="tab-content-expense">
-      <div class="expense-controls">
-        <button class="btn-primary" onclick="addExpenseRow()" style="padding:9px 18px; font-size:13px;">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          항목 추가
-        </button>
-        <div class="total-chip" id="totalChip">합계 ₩0</div>
-      </div>
       <div class="expense-table-wrap">
         <table class="expense-table">
           <thead><tr>
@@ -347,13 +340,24 @@
             <th style="width:32px"></th>
           </tr></thead>
           <tbody id="expenseBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="7" style="padding:0;">
+                <button onclick="addExpenseRow()" style="width:100%; background:none; border:none; padding:11px 14px; font-family:'Noto Sans KR',sans-serif; font-size:13px; color:var(--text-light); cursor:pointer; display:flex; align-items:center; gap:7px; transition:background 0.15s;"
+                  onmouseover="this.style.background='rgba(46,125,159,0.05)'" onmouseout="this.style.background='none'">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  항목 추가
+                </button>
+              </td>
+            </tr>
+          </tfoot>
         </table>
         <div class="table-footer">
           <span style="font-size:12.5px; color:var(--text-mid);">정산 포함 지출</span>
           <span style="color:var(--ocean); font-size:15px;" id="totalAmount">₩0</span>
         </div>
       </div>
-      <p style="font-size:11.5px; color:var(--text-light); text-align:center;">영수증은 각 행의 📎 버튼으로 첨부하세요</p>
+      <p style="font-size:11.5px; color:var(--text-light); text-align:center; margin-top:-0.5rem;">영수증은 각 행의 📎 버튼으로 첨부하세요</p>
     </div>
 
     <!-- SUMMARY TAB -->
@@ -701,6 +705,13 @@ window.addExpenseRow = function() {
   const id = 'exp_' + Date.now();
   const exp = { id, category:'food', desc:'', amount:0, payer: myId, treat: false, receipt: null };
   pushExpense(exp);
+  // 추가 후 테이블 하단으로 스크롤
+  setTimeout(() => {
+    const tbody = document.getElementById('expenseBody');
+    if (tbody && tbody.lastElementChild) {
+      tbody.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 400);
 };
 window.deleteExpense = function(id) {
   deleteExpenseDb(id);
@@ -778,7 +789,6 @@ window.updateExpAmount = function(id, val) {
 function updateTotal() {
   const total = (state.expenses||[]).filter(e => !e.treat).reduce((s,e) => s + (e.amount||0), 0);
   document.getElementById('totalAmount').textContent = '₩' + total.toLocaleString();
-  document.getElementById('totalChip').textContent   = '합계 ₩' + total.toLocaleString();
 }
 
 // ── SUMMARY ──
