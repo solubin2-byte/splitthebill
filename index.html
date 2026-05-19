@@ -541,7 +541,6 @@ async function pushMember(m) {
 
 // ── UI SYNC ──
 function applyStateToUI() {
-  // 제목
   const tt = document.getElementById('mainTitleText');
   const ti = document.getElementById('mainTitleInput');
   if (tt && document.activeElement !== ti) {
@@ -550,11 +549,13 @@ function applyStateToUI() {
   }
   document.getElementById('setupTitle').textContent = state.title;
   document.getElementById('appTitle').textContent = state.title;
-  // 현재 페이지에 맞게 렌더
   const activePage = document.querySelector('.page.active')?.id;
   if (activePage === 'page-setup') renderSetup();
   if (activePage === 'page-app') {
-    renderExpenseTable();
+    // 입력 중인 input이 있으면 테이블 재렌더 건너뜀
+    const focused = document.activeElement;
+    const isTyping = focused && (focused.classList.contains('expense-input') || focused.classList.contains('amount-input'));
+    if (!isTyping) renderExpenseTable();
     const activeTab = document.querySelector('.tab-btn.active')?.id?.replace('tab-','');
     if (activeTab === 'summary') recalc();
     if (activeTab === 'receipts') renderReceipts();
@@ -721,9 +722,12 @@ function renderExpenseTable() {
     ).join('');
     tr.innerHTML = `
       <td><select class="expense-select" onchange="updateExp('${exp.id}','category',this.value)">${catOptions}</select></td>
-      <td><input class="expense-input" type="text" placeholder="내용 입력" value="${exp.desc||''}" oninput="updateExp('${exp.id}','desc',this.value)"></td>
+      <td><input class="expense-input" type="text" placeholder="내용 입력" value="${exp.desc||''}"
+        oninput="updateExpDescLocal('${exp.id}',this.value)"
+        onblur="updateExpDescSave('${exp.id}',this.value)"></td>
       <td><input class="amount-input" type="text" inputmode="numeric" placeholder="0"
-        value="${exp.amount > 0 ? exp.amount.toLocaleString() : ''}" oninput="updateExpAmount('${exp.id}',this.value)"></td>
+        value="${exp.amount > 0 ? exp.amount.toLocaleString() : ''}"
+        oninput="updateExpAmount('${exp.id}',this.value)"></td>
       <td style="text-align:center;">
         <button onclick="toggleTreat('${exp.id}')"
           style="background:${exp.treat ? 'var(--coral)' : 'none'}; border:1.5px solid ${exp.treat ? 'var(--coral)' : 'var(--border)'}; border-radius:6px; padding:3px 8px; font-size:11px; color:${exp.treat ? 'white' : 'var(--text-light)'}; cursor:pointer; white-space:nowrap; transition:all 0.15s;">
@@ -749,6 +753,16 @@ window.updateExp = function(id, key, val) {
   exp[key] = val;
   if (key === 'category') renderExpenseTable();
   pushExpense(exp);
+};
+// 내용 입력: 로컬 state만 업데이트 (DOM 재렌더 없음)
+window.updateExpDescLocal = function(id, val) {
+  const exp = state.expenses.find(e => e.id === id);
+  if (exp) exp.desc = val;
+};
+// 포커스 빠질 때만 Firebase에 저장
+window.updateExpDescSave = function(id, val) {
+  const exp = state.expenses.find(e => e.id === id);
+  if (exp) { exp.desc = val; pushExpense(exp); }
 };
 window.updateExpAmount = function(id, val) {
   const clean = parseInt(val.replace(/,/g,'')) || 0;
