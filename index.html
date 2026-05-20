@@ -591,12 +591,26 @@ function applyTitle() {
 window.goToSetup = function() {
   state.title = titleText.textContent.trim() || '즐거웠다 제주...';
   document.getElementById('setupTitle').textContent = state.title;
+
+  // 같은 이름의 기존 멤버가 있으면 그 id를 내 것으로 재활용 (닉네임 로그인)
+  const savedName = localStorage.getItem('stb_myName') || '';
+  if (savedName) {
+    const sameNameMember = state.members.find(m => m.id !== myId && m.name === savedName);
+    if (sameNameMember) {
+      // 기존 멤버 id를 내 myId로 덮어씌우기
+      myId = sameNameMember.id;
+      window._myId = myId;
+      localStorage.setItem(LS_MY_ID, myId);
+    }
+  }
+
   // 내 멤버 없으면 자동 추가
   if (!state.members.find(m => m.id === myId)) {
-    const me = { id: myId, name: '', color: COLORS[state.members.length % COLORS.length], noPayment: false };
+    const me = { id: myId, name: savedName, color: COLORS[state.members.length % COLORS.length], noPayment: false };
     state.members.push(me);
     pushMember(me);
   }
+
   // 회계 담당자 버튼 이벤트 직접 연결
   const btn = document.getElementById('btnSetMeTreasurer');
   btn.onclick = () => {
@@ -607,6 +621,16 @@ window.goToSetup = function() {
   };
   renderSetup();
   showPage('page-setup');
+};
+
+window.deleteMember = async function(id) {
+  if (!confirm('이 멤버를 삭제할까요? 해당 멤버가 추가한 지출 항목은 유지돼요.')) return;
+  if (state.treasurer === id) {
+    state.treasurer = null;
+    await pushState({ treasurer: null });
+  }
+  await remove(ref(db, 'splitthebill/members/' + id));
+  showToast('멤버가 삭제됐어요');
 };
 
 function renderSetup() {
@@ -643,7 +667,10 @@ function renderSetup() {
       <span style="font-size:14px; flex:1; color:var(--text-dark);">${m.name || '(이름 없음)'}</span>
       ${m.noPayment ? '<span style="font-size:10px; background:#FFF0E8; color:var(--coral-dark); padding:2px 8px; border-radius:100px;">결제없음</span>' : ''}
       ${isT ? '<span class="treasurer-badge">💳 회계</span>' : ''}
-      <span style="font-size:11px; color:var(--text-light);">🔒 읽기전용</span>
+      <button onclick="deleteMember('${m.id}')" title="멤버 삭제" style="background:none; border:none; cursor:pointer; color:var(--text-light); padding:4px; border-radius:6px; display:flex; align-items:center; transition:all 0.15s;"
+        onmouseover="this.style.color='#E05050';this.style.background='#FEF0F0'" onmouseout="this.style.color='var(--text-light)';this.style.background='none'">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      </button>
     `;
     list.appendChild(row);
   });
@@ -653,6 +680,7 @@ window.updateMyName = function(val) {
   const me = state.members.find(m => m.id === myId);
   if (!me) return;
   me.name = val;
+  localStorage.setItem('stb_myName', val);
   document.getElementById('myAvatar').textContent = val ? val.slice(0,2) : '나';
   pushMember(me);
 };
